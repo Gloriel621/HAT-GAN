@@ -1,0 +1,1 @@
+CUDA_VISIBLE_DEVICES=0,1,2,3 python test.py --verbose --dataroot ./datasets/females --name female_model --which_epoch 200 --how_many 100 --display_id 0 --checkpoints_dir checkpoints

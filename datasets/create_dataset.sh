@@ -1,0 +1,3 @@
+python3 create_dataset.py
+python3 create_dataset_caf.py
+python3 create_dataset_allagesdataset.py
