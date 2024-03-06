@@ -52,10 +52,6 @@ For inference, modify the `--dataroot`, `--name`, `--which_epoch`, and `--checkp
 sh test.sh
 ```
 
-### Pretrained models
-
-Pretrained models will be provided later.
-
 ### Notes
 
 Ensure that you have correctly placed the datasets in the required directory before preprocessing.
