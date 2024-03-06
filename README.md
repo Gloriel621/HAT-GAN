@@ -17,7 +17,7 @@ This README provides instructions for setting up, training, and testing the Hier
    Ensure to download the following datasets and place them in the directory where HAT-GAN is located(not inside the HAT-GAN directory):
    - FFHQ-Aging-Dataset: [GitHub Link](https://github.com/royorel/FFHQ-Aging-Dataset)
    - Cross-Age-Face Dataset: [GitHub Link](https://github.com/AvLab-CV/AgeTransGAN?tab=readme-ov-file#cross-age-face-dataset)
-   - All-Age-Faces-Dataset: [GitHub Link](https://github.com/JingchunCheng/All-Age-Faces-Dataset)
+   - All-Age-Faces-Dataset: [Google Drive Link](https://drive.google.com/drive/folders/17l3dqmv7SjmQ1SFiP0aIvWbF2KNcFyuK?usp=sharing)
 
 2. **Preprocess the Datasets:**
    Execute the Python scripts below to preprocess the datasets. This step is crucial for preparing the data for training:
@@ -32,6 +32,11 @@ This README provides instructions for setting up, training, and testing the Hier
    ```
 
 ### Training
+
+First, turn on `visdom` on another terminal.
+```bash
+visdom
+```
 
 To train the model, modify the `--dataroot`, `--name` parameters in `train.sh` script according to your needs, then run:
 ```bash
