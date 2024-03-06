@@ -14,7 +14,7 @@ This README provides instructions for setting up, training, and testing the Hier
 ## Data Preparation
 
 1. **Download Datasets:**
-   Ensure to download the following datasets and place them in the directory where HAT-GAN is located:
+   Ensure to download the following datasets and place them in the directory where HAT-GAN is located(not inside the HAT-GAN directory):
    - FFHQ-Aging-Dataset: [GitHub Link](https://github.com/royorel/FFHQ-Aging-Dataset)
    - Cross-Age-Face Dataset: [GitHub Link](https://github.com/AvLab-CV/AgeTransGAN?tab=readme-ov-file#cross-age-face-dataset)
    - All-Age-Faces-Dataset: [GitHub Link](https://github.com/JingchunCheng/All-Age-Faces-Dataset)
