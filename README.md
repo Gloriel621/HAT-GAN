@@ -40,7 +40,7 @@ sh train.sh
 
 ### Inference
 
-For inference, modify the --dataroot, --name, --which_epoch, and --checkpoint_dir parameters in test.sh script according to your needs, then run:
+For inference, modify the `--dataroot`, `--name`, `--which_epoch`, and `--checkpoint_dir` parameters in `test.sh` script according to your needs, then run:
 ```bash
 sh test.sh
 ```
