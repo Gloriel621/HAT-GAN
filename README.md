@@ -19,6 +19,8 @@ This README provides instructions for setting up, training, and testing the Hier
    - Cross-Age-Face Dataset: [GitHub Link](https://github.com/AvLab-CV/AgeTransGAN?tab=readme-ov-file#cross-age-face-dataset)
    - All-Age-Faces-Dataset: [Google Drive Link](https://drive.google.com/drive/folders/17l3dqmv7SjmQ1SFiP0aIvWbF2KNcFyuK?usp=sharing)
 
+   Unzip All-Ages-Faces-Dataset/results/cropped_imgs.zip.
+
 2. **Preprocess the Datasets:**
    Execute the Python scripts below to preprocess the datasets. This step is crucial for preparing the data for training:
    ```bash
