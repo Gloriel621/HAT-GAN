@@ -45,6 +45,11 @@ To train the model, modify the `--dataroot`, `--name` parameters in `train.sh` s
 sh train.sh
 ```
 
+### Pretrained Models
+
+Download checkpoints.zip(https://drive.google.com/file/d/1-yFO6AAyEfQgpD9E3BQhJSf01G0cox5k/view?usp=sharing), unzip and put it in the HAT-GAN directory.
+The inference can be done using pretrained models.
+
 ### Inference
 
 For inference, modify the `--dataroot`, `--name`, `--which_epoch`, and `--checkpoint_dir` parameters in `test.sh` script according to your needs, then run:
