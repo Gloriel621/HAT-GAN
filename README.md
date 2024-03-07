@@ -47,7 +47,7 @@ sh train.sh
 
 ### Pretrained Models
 
-Download checkpoints.zip(https://drive.google.com/file/d/1-yFO6AAyEfQgpD9E3BQhJSf01G0cox5k/view?usp=sharing), unzip and put it in the HAT-GAN directory.
+Download checkpoints.zip [Google Drive Link](https://drive.google.com/file/d/1-yFO6AAyEfQgpD9E3BQhJSf01G0cox5k/view?usp=sharing), unzip and put it in the HAT-GAN directory.
 The inference can be done using pretrained models.
 
 ### Inference
