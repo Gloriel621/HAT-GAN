@@ -1,6 +1,6 @@
-# Hierarchical Age Transformation Generative Adversarial Network (HAT-GAN)
+# High-Fidelity Face Age Transformation via Hierarchical Encoding and Contrastive Learning (HECL)
 
-This README provides instructions for setting up, training, and testing the Hierarchical Age Transformation Generative Adversarial Network (HAT-GAN), a state-of-the-art model for age transformation in images. The guide assumes operation on a Linux environment and recommends the use of a GPU for execution.
+This README provides instructions for setting up, training, and testing the High-Fidelity Face Age Transformation via Hierarchical Encoding and Contrastive Learning (HECL), a state-of-the-art model for age transformation in images. The guide assumes operation on a Linux environment and recommends the use of a GPU for execution.
 
 ## Environment Setup, Training, and Inference Instructions
 
