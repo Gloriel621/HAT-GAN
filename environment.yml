@@ -1,4 +1,4 @@
-name: hatgan
+name: hecl
 channels:
   - pytorch
   - nvidia
