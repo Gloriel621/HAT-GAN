@@ -1,7 +1,7 @@
 def create_model(opt):
-    from .HAT_model import HATGAN, InferenceModel
+    from .HECL_model import HECL, InferenceModel
     if opt.isTrain:
-        model = HATGAN()
+        model = HECL()
     else:
         model = InferenceModel()
 

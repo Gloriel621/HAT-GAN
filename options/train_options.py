@@ -40,3 +40,4 @@ class TrainOptions(BaseOptions):
         self.parser.add_argument('--lambda_struct', type=float, default=3.0, help='weight for disantangled structure consistency loss')
         self.parser.add_argument('--lambda_pixel', type=float, default=1.0, help='weight for pixel loss')
         self.parser.add_argument('--lambda_morph', type=float, default=1.0, help='weight for morph feature loss')
+        self.parser.add_argument('--lambda_contrastive', type=float, default=0.1, help='weight for lambda contrastive loss in descriminator')

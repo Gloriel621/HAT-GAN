@@ -9,9 +9,9 @@ from .base_model import BaseModel
 import util.util as util
 from . import networks
 
-class HATGAN(BaseModel):
+class HECL(BaseModel):
     def name(self):
-        return 'HATGAN'
+        return 'HECL'
 
     def initialize(self, opt):
         BaseModel.initialize(self, opt)
@@ -105,6 +105,7 @@ class HATGAN(BaseModel):
             self.criterionRec = self.parallelize(networks.FeatureConsistency())
             self.criterionPixel = self.parallelize(networks.FeatureConsistency())
             self.criterionMorph = self.parallelize(networks.FeatureConsistency())
+            self.contrastive_loss = ContrastiveLoss(temperature=0.5).cuda()
 
             # initialize optimizers
             self.old_lr = opt.lr
@@ -277,12 +278,10 @@ class HATGAN(BaseModel):
         self.optimizer_G.zero_grad()
         self.get_conditions()
 
-        # Multi GPU
         rec_images, gen_images, cyc_images, orig_id_features, \
         orig_structure_feat, orig_texture_feat, orig_morph_feat, orig_age_features, fake_id_features, fake_struct_features, fake_morph_feat, fake_age_features = \
         self.netG(self.reals, self.gen_conditions, self.cyc_conditions, self.orig_conditions)
 
-        # discriminator pass
         disc_out = self.netD(gen_images)
 
         # self-reconstruction loss
@@ -384,8 +383,8 @@ class HATGAN(BaseModel):
         self.optimizer_D.zero_grad()
         self.get_conditions()
 
-        # multi GPU
         _, gen_images, _, _, _, _, _, _, _, _, _, _ = self.netG(self.reals, self.gen_conditions, None, None, disc_pass=True)
+
         # fake discriminator pass
         fake_disc_in = gen_images.detach()
         fake_disc_out = self.netD(fake_disc_in)
@@ -408,11 +407,16 @@ class HATGAN(BaseModel):
         # R1 regularization
         loss_D_reg = self.R1_reg(real_disc_out, real_disc_in)
 
-        loss_D = (loss_D_fake + loss_D_real + loss_D_reg).mean() #+ cooccur_loss
+        # Contrastive loss
+        loss_D_contrastive = (self.contrastive_loss(real_disc_out, real_target_classes.cuda()) 
+                              + self.contrastive_loss(fake_disc_out, fake_target_classes.cuda())) * self.opt.lambda_contrastive
+
+        loss_D = (loss_D_fake + loss_D_real + loss_D_reg + loss_D_contrastive).mean()
         loss_D.backward()
         self.optimizer_D.step()
 
-        return {'loss_D_real': loss_D_real.mean(), 'loss_D_fake': loss_D_fake.mean(), 'loss_D_reg': loss_D_reg.mean()}
+        return {'loss_D_real': loss_D_real.mean(), 'loss_D_fake': loss_D_fake.mean(), 
+                'loss_D_reg': loss_D_reg.mean(), 'loss_D_contrastive': loss_D_contrastive.mean()}
 
 
     def inference(self, data):
@@ -527,7 +531,37 @@ class HATGAN(BaseModel):
 
         return return_dicts
 
+class ContrastiveLoss(nn.Module):
+    def __init__(self, temperature=0.5):
+        super(ContrastiveLoss, self).__init__()
+        self.temperature = temperature
 
-class InferenceModel(HATGAN):
+    def forward(self, features, labels):
+        batch_size = features.size(0)
+        feature_dim = features.size(1)
+        features = features.view(batch_size, feature_dim, -1).mean(dim=2)
+
+        features = F.normalize(features, p=2, dim=1)
+        similarity_matrix = torch.matmul(features, features.T) / self.temperature
+
+        labels = labels.unsqueeze(1)
+        mask = torch.eq(labels, labels.T).float().to(features.device)
+
+        # Contrastive loss
+        logits = similarity_matrix
+        logits_max, _ = torch.max(logits, dim=1, keepdim=True)
+        logits = logits - logits_max.detach()
+
+        exp_logits = torch.exp(logits) * (1 - torch.eye(batch_size).to(features.device))
+        log_prob = logits - torch.log(exp_logits.sum(dim=1, keepdim=True) + 1e-10)
+        
+        # Mean of log-likelihood over positive
+        mean_log_prob_pos = (mask * log_prob).sum(dim=1) / mask.sum(dim=1)
+
+        loss = -mean_log_prob_pos.mean()
+        return loss
+
+
+class InferenceModel(HECL):
     def forward(self, data):
         return self.inference(data)
