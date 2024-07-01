@@ -35,7 +35,7 @@ This README provides instructions for setting up, training, and testing the High
 
 ### Training
 
-First, turn on `visdom` on another terminal.
+First, turn on `visdom` on another terminal. This will open visdom server on `localhost:8097` by default.
 ```bash
 visdom
 ```
