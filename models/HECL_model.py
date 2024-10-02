@@ -104,7 +104,7 @@ class HECL(BaseModel):
             self.criterionCycle = self.parallelize(networks.FeatureConsistency())
             self.criterionRec = self.parallelize(networks.FeatureConsistency())
             self.criterionPixel = self.parallelize(networks.FeatureConsistency())
-            self.criterionMorph = self.parallelize(networks.FeatureConsistency())
+            self.criterionSem = self.parallelize(networks.FeatureConsistency())
             self.contrastive_loss = ContrastiveLoss(temperature=0.5).cuda()
 
             # initialize optimizers
@@ -279,7 +279,7 @@ class HECL(BaseModel):
         self.get_conditions()
 
         rec_images, gen_images, cyc_images, orig_id_features, \
-        orig_structure_feat, orig_texture_feat, orig_morph_feat, orig_age_features, fake_id_features, fake_struct_features, fake_morph_feat, fake_age_features = \
+        orig_structure_feat, orig_texture_feat, orig_sem_feat, orig_age_features, fake_id_features, fake_struct_features, fake_sem_feat, fake_age_features = \
         self.netG(self.reals, self.gen_conditions, self.cyc_conditions, self.orig_conditions)
 
         disc_out = self.netD(gen_images)
@@ -297,44 +297,31 @@ class HECL(BaseModel):
             loss_G_Cycle = torch.zeros(1).cuda()
 
         # identity feature loss
-        loss_G_identity_reconst = self.identity_reconst_criterion(fake_id_features, orig_id_features) * self.opt.lambda_id
+        loss_G_identity = self.identity_reconst_criterion(fake_id_features, orig_id_features) * self.opt.lambda_id
         
         # age feature loss
-        loss_G_age_reconst = self.age_reconst_criterion(fake_age_features, self.gen_conditions) * self.opt.lambda_age
+        loss_G_age = self.age_reconst_criterion(fake_age_features, self.gen_conditions) * self.opt.lambda_age
 
         # orig age feature loss
-        loss_G_age_reconst += self.age_reconst_criterion(orig_age_features, self.orig_conditions) * self.opt.lambda_age
+        loss_G_age += self.age_reconst_criterion(orig_age_features, self.orig_conditions) * self.opt.lambda_age
 
         # adversarial loss
         target_classes = torch.cat((self.class_B,self.class_A),0)
         loss_G_Adv = self.criterionGAN(disc_out, target_classes, True, is_gen=True)
 
-        # structural loss
-        mask_0 = torch.cat((self.class_A, self.class_B))
-        mask_s0 = (mask_0>3).float().cuda().view(-1,1,1,1)
-        mask_1 = torch.cat((self.class_B, self.class_A))
-        mask_s1 = (mask_1>3).float().cuda().view(-1,1,1,1)
-        mask = mask_s0 * mask_s1
-        loss_G_structure = self.struct_reconst_criterion(mask * fake_struct_features, mask * orig_structure_feat) * self.opt.lambda_struct
-
-        # pixel loss
-        loss_G_pixel = self.criterionPixel(gen_images, self.reals) * self.opt.lambda_pixel
-
-        # morph feature loss
-        loss_G_morph = self.criterionMorph(orig_morph_feat, fake_morph_feat) * self.opt.lambda_morph
+        # semantic loss
+        loss_G_semantic = self.criterionSem(orig_sem_feat, fake_sem_feat) * self.opt.lambda_sem
         
         # overall loss
         loss_G = (loss_G_Adv + loss_G_Rec + loss_G_Cycle + \
-        loss_G_identity_reconst + loss_G_age_reconst + loss_G_structure + loss_G_pixel + loss_G_morph).mean()
+        loss_G_identity + loss_G_age + loss_G_semantic).mean()
 
         # loss_G_Adv : Adversarial Loss
-        # loss_G_Rec : self reconstruction loss
-        # loss_G_cycle : cycle consistency loss
-        # loss_G_identity_reconst : ID loss
-        # loss_G_age_reconst : Age loss
-        # loss_G_structure : Structure loss
-        # loss_G_pixel : pixelloss
-        # loss_G_morph : morph feature loss
+        # loss_G_Rec : Self reconstruction loss
+        # loss_G_cycle : Cycle consistency loss
+        # loss_G_identity : ID loss
+        # loss_G_age : Age loss
+        # loss_G_semantic : Semantic loss
 
         loss_G.backward()
         self.optimizer_G.step()
@@ -347,18 +334,18 @@ class HECL(BaseModel):
         if infer:
             if self.use_moving_avg:
                 with torch.no_grad():
-                    orig_id_features_out, orig_struct, orig_text, orig_morph, _ = self.G_moving_avg.encode(self.reals)
+                    orig_id_features_out, orig_struct, orig_text, orig_semantic, _ = self.G_moving_avg.encode(self.reals)
                     # within domain decode
                     if self.opt.lambda_rec > 0:
-                        rec_images_out = self.G_moving_avg.decode(orig_struct, orig_text, orig_morph, self.orig_conditions)
+                        rec_images_out = self.G_moving_avg.decode(orig_struct, orig_text, orig_semantic, self.orig_conditions)
 
                     # cross domain decode
-                    gen_images_out = self.G_moving_avg.decode(orig_struct, orig_text, orig_morph, self.gen_conditions)
+                    gen_images_out = self.G_moving_avg.decode(orig_struct, orig_text, orig_semantic, self.gen_conditions)
                     # encode generated
-                    fake_id_features_out, fake_struct, fake_text, fake_morph, _ = self.G_moving_avg.encode(gen_images)
+                    fake_id_features_out, fake_struct, fake_text, fake_semantic, _ = self.G_moving_avg.encode(gen_images)
                     # decode generated
                     if self.opt.lambda_cyc > 0:
-                        cyc_images_out = self.G_moving_avg.decode(fake_struct, fake_text, fake_morph, self.cyc_conditions)
+                        cyc_images_out = self.G_moving_avg.decode(fake_struct, fake_text, fake_semantic, self.cyc_conditions)
             else:
                 gen_images_out = gen_images
                 if self.opt.lambda_rec > 0:
@@ -367,9 +354,8 @@ class HECL(BaseModel):
                     cyc_images_out = cyc_images
 
         loss_dict = {'loss_G_gen_Adv': loss_G_Adv.mean(), 'loss_G_Cycle': loss_G_Cycle.mean(),
-                     'loss_G_Rec': loss_G_Rec.mean(), 'loss_G_identity_reconst': loss_G_identity_reconst.mean(),
-                     'loss_G_age_reconst': loss_G_age_reconst.mean(), 'loss_G_struct': loss_G_structure.mean(),
-                     'loss_G_pixel': loss_G_pixel.mean(), 'loss_G_morph': loss_G_morph.mean()
+                     'loss_G_Rec': loss_G_Rec.mean(), 'loss_G_identity_reconst': loss_G_identity.mean(),
+                     'loss_G_age_reconst': loss_G_age.mean(), 'loss_G_semantic': loss_G_semantic.mean()
                      }
 
         return [loss_dict,

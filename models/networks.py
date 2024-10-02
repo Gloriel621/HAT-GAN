@@ -487,8 +487,8 @@ class DisentangledEncoder(nn.Module):
         ]
         self.text_layer = nn.Sequential(*text_layers)
 
-        # layer for morphlogical features
-        morphological_layers = [
+        # layer for semantic features
+        semantic_layers = [
             padding_layer(1),
             conv2d(ngf * mult, ngf * mult, kernel_size=3, stride=2, padding=0),
             norm_layer(ngf * mult),
@@ -496,7 +496,7 @@ class DisentangledEncoder(nn.Module):
             nn.AdaptiveAvgPool2d(1),
             conv2d(ngf * mult, 256, kernel_size=1, stride=1, padding=0)
         ]
-        self.morphological_layer = nn.Sequential(*morphological_layers)
+        self.semantic_layer = nn.Sequential(*semantic_layers)
 
     def forward(self, input):
         feat1 = self.encoder1(input)
@@ -504,9 +504,9 @@ class DisentangledEncoder(nn.Module):
         feat2 = self.encoder2(feat1)
         id_feat = self.id_layer(feat2)
         texture = self.text_layer(feat2)
-        morph = self.morphological_layer(feat2)
+        sem = self.semantic_layer(feat2)
 
-        return id_feat, structure, texture, morph
+        return id_feat, structure, texture, sem
 
 class Disentangled_AgeEncoder(nn.Module):
     def __init__(self, input_nc, ngf=64, n_downsampling=4, style_dim=100, padding_type='reflect', conv_weight_norm=False, actvn='lrelu'):
@@ -615,7 +615,7 @@ class Disentangled_StyledDecoder(nn.Module):
 
         self.t_transform = Modulated_1D(256,256,normalize_mlp=normalize_mlp)
 
-    def forward(self, struct_feat, text_feat, morph_feat, target_age=None, traverse=False, deploy=False, interp_step=0.5):
+    def forward(self, struct_feat, text_feat, sem_feat, target_age=None, traverse=False, deploy=False, interp_step=0.5):
 
         if target_age is not None:
             if traverse:
@@ -633,7 +633,7 @@ class Disentangled_StyledDecoder(nn.Module):
         if traverse:
             struct_feat = struct_feat.repeat(output_classes, 1,1,1)
             text_feat = text_feat.repeat(output_classes, 1,1,1)
-            morph_feat = morph_feat.repeat(output_classes, 1,1,1)
+            sem_feat = sem_feat.repeat(output_classes, 1,1,1)
             for i in range(orig_class_num-1):
                 latent[interps*i:interps*(i+1), :] = alphas * temp_latent[i,:] + (1 - alphas) * temp_latent[i+1,:]
             latent[-1,:] = temp_latent[-1,:]
@@ -641,7 +641,7 @@ class Disentangled_StyledDecoder(nn.Module):
             output_classes = target_age.shape[0]
             struct_feat = struct_feat.repeat(output_classes, 1,1,1)
             text_feat = text_feat.repeat(output_classes, 1,1,1)
-            morph_feat = morph_feat.repeat(output_classes, 1,1,1)
+            sem_feat = sem_feat.repeat(output_classes, 1,1,1)
 
         if target_age is not None:
             B, C, W, H = struct_feat.size()         
@@ -653,7 +653,7 @@ class Disentangled_StyledDecoder(nn.Module):
             new_struct = struct_feat
             new_text = text_feat.contiguous().reshape(B,C)
 
-        combined_feat = new_struct + morph_feat
+        combined_feat = new_struct + sem_feat
 
         out = self.StyledConvBlock_0(combined_feat, new_text)
         out = self.StyledConvBlock_1(out, new_text)
@@ -705,46 +705,46 @@ class Disentangled_Generator(nn.Module):
 
     def encode(self, input):
         if torch.is_tensor(input):
-            id_features, struct_features, text_features, morph_features = self.id_encoder(input)
+            id_features, struct_features, text_features, sem_features = self.id_encoder(input)
             age_features = self.age_encoder(input)
-            return id_features, struct_features, text_features, morph_features, age_features
+            return id_features, struct_features, text_features, sem_features, age_features
         else:
             return None, None, None, None, None
 
-    def decode(self, struct_features, text_features, morph_features, target_age_features=None, traverse=False, deploy=False, interp_step=0.5):
+    def decode(self, struct_features, text_features, sem_features, target_age_features=None, traverse=False, deploy=False, interp_step=0.5):
         if torch.is_tensor(struct_features):
-            return self.decoder(struct_features, text_features, morph_features, target_age=target_age_features, traverse=traverse, deploy=deploy, interp_step=interp_step)
+            return self.decoder(struct_features, text_features, sem_features, target_age=target_age_features, traverse=traverse, deploy=deploy, interp_step=interp_step)
         else:
             return None
 
     # parallel forward
     def forward(self, input, target_age_code, cyc_age_code, source_age_code, disc_pass=False):
-        orig_id_features, orig_structure_feat, orig_texture_feat, orig_morph_feat = self.id_encoder(input)
+        orig_id_features, orig_structure_feat, orig_texture_feat, orig_sem_feat = self.id_encoder(input)
         orig_age_features = self.age_encoder(input)
         if disc_pass:
             rec_out = None
 
         else:
-            rec_out = self.decode(orig_structure_feat, orig_texture_feat, orig_morph_feat, target_age_features = source_age_code)
+            rec_out = self.decode(orig_structure_feat, orig_texture_feat, orig_sem_feat, target_age_features = source_age_code)
 
-        gen_out = self.decode(orig_structure_feat, orig_texture_feat, orig_morph_feat, target_age_features = target_age_code)
+        gen_out = self.decode(orig_structure_feat, orig_texture_feat, orig_sem_feat, target_age_features = target_age_code)
 
         if disc_pass:
             fake_id_features = None
             fake_structure_feat = None
-            fake_morph_feat = None
+            fake_sem_feat = None
             fake_age_features = None
             cyc_out = None
         else:
-            fake_id_features, fake_structure_feat, fake_texture_feat, fake_morph_feat = self.id_encoder(gen_out)
+            fake_id_features, fake_structure_feat, fake_texture_feat, fake_sem_feat = self.id_encoder(gen_out)
             fake_age_features = self.age_encoder(gen_out)
-            cyc_out = self.decode(fake_structure_feat, fake_texture_feat, fake_morph_feat, target_age_features = cyc_age_code)
-        return rec_out, gen_out, cyc_out, orig_id_features, orig_structure_feat, orig_texture_feat, orig_morph_feat, orig_age_features, \
-            fake_id_features, fake_structure_feat, fake_morph_feat, fake_age_features
+            cyc_out = self.decode(fake_structure_feat, fake_texture_feat, fake_sem_feat, target_age_features = cyc_age_code)
+        return rec_out, gen_out, cyc_out, orig_id_features, orig_structure_feat, orig_texture_feat, orig_sem_feat, orig_age_features, \
+            fake_id_features, fake_structure_feat, fake_sem_feat, fake_age_features
 
     def infer(self, input, target_age_features, traverse=False, deploy=False, interp_step=0.5):
-        id_features, structure_feat, texture_feat, morph_feat = self.id_encoder(input)
-        out = self.decode(structure_feat, texture_feat, morph_feat, target_age_features, traverse=traverse, deploy=deploy, interp_step=interp_step)
+        id_features, structure_feat, texture_feat, sem_feat = self.id_encoder(input)
+        out = self.decode(structure_feat, texture_feat, sem_feat, target_age_features, traverse=traverse, deploy=deploy, interp_step=interp_step)
         return out
 
 # Define a resnet block
